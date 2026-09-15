@@ -8,4 +8,5 @@ debian/mindie-agent.prerm.debhelper
 debian/mindie-agent.substvars
 debian/mindie-agent/
 package/
+*.dev.conf
 
