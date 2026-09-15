@@ -2,12 +2,11 @@
 
 require __DIR__ . '/agent.php';
 require __DIR__ . '/vendor/autoload.php';
-use Mf2;
 
 /*
  * See https://github.com/microformats/php-mf2
  */
-function mf2($resource_uri: string, $access_token: string)
+function mf2(string $resource_uri, string $access_token)
 {
     #$authorization_header = "Authorization: Bearer $access_token";
     $curl = initAgentCurl($resource_uri);
@@ -20,14 +19,16 @@ function mf2($resource_uri: string, $access_token: string)
     $error_code = curl_errno($curl);
     if (!$error_code) {
         $error = curl_error($curl);
-        throw "Request to `$resource_uri` had error `$error_code $error`";
+        throw new Exception("Request to `$resource_uri` had error `$error_code $error`");
     }
     $parsed = Mf2\parse($body, $resource_uri);
     return $parsed;
 }
 
 setup();
+#error_log('[MIndie-Agent:info] '."end setup");
 $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[!#$%&\'*+.^_`|~0-9a-z-]+$@i']]);
+$resource = null;
 if ($method === 'POST') {
     $resource_uri = filter_input(INPUT_POST, 'url', FILTER_VALIDATE_URL);
     $login_page = filter_input(INPUT_POST, 'login', FILTER_VALIDATE_URL);
@@ -86,7 +87,7 @@ padding:20px;
                 </div>
             </div>
         </form>
-        <?php if ($resource) ?>
+        <?php if ($resource) : ?>
         <blockquote>
             <?php echo var_dump($resource) ?>
         </blockquote>

@@ -2,13 +2,15 @@
 
 require '/usr/src/mindie-idp/selfauth/index.php';
 
+define('MINTOKEN_CURL_TIMEOUT', (int)getenv('MINTOKEN_CURL_TIMEOUT'));
+
 $issuer = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . $_SERVER['HTTP_HOST'];
 $app_url = $issuer . preg_replace('/index.*$/', '', $_SERVER['REQUEST_URI']);
 #$app_url = "$issuer/mindie-agent/index";
 
 function getAppUrl(): string
 {
-    global issuer, app_url;
+    global $issuer, $app_url;
     return $app_url;
 }
 
@@ -68,14 +70,14 @@ function build_url(array $parts) {
         (isset($parts['fragment']) ? "#{$parts['fragment']}" : '');
 }
 
-function login($resource_uri : string, $login_page: string, $login_field: string = 'url'): string {
+function login(string $resource_uri, string $login_page, string $login_field = 'url'): string {
     $curl = initAgentCurl($login_page);
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);
-    if (!$error_code) {
+    if ($error_code !== 0) {
         $error = curl_error($curl);
-        throw "Request to `$login_page` had error `$error_code $error`";
+        throw new Exception("Request to `$login_page` had error `$error_code $error`");
     }
     
     // see https://www.php.net/manual/en/class.domdocument.php
@@ -95,7 +97,7 @@ function login($resource_uri : string, $login_page: string, $login_field: string
         }
     }
     
-    if (parse_url($action, PHP_URL_SCHEME) === false) {
+    if (parse_url($action, PHP_URL_SCHEME) === null) {
         # need to fix because relative
         $login = parse_url($login_page);
         $login['path'] = $action;
@@ -104,40 +106,40 @@ function login($resource_uri : string, $login_page: string, $login_field: string
     $data[$login_field] = getAppUrl();
     
     $curl = initAgentCurl($action);
-    if ($method === 'GET') {
+    if (strcasecmp($method, 'GET') === 0) {
         $curl = initAgentCurl($action . '?' . http_build_query($data));
         curl_setopt($curl, CURLOPT_GET, true);
     }
-    else if ($method === 'POST') {
+    else if (strcasecmp($method, 'POST') === 0) {
         curl_setopt($curl, CURLOPT_POST, true);
         curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($data));
     }
     else {
-        throw "invalid login method $method";
+        throw new Exception("invalid login method $method");
     }
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);
-    if (!$error_code) {
+    if ($error_code !== 0) {
         $error = curl_error($curl);
-        throw "Request to `$action` had error `$error_code $error`";
+        throw new Exception("Request to `$action` had error `$error_code $error`");
     }
     $redirect = curl_getinfo($curl, CURLINFO_REDIRECT_URL);
     return $redirect;
 }
 
-function authenticate($idp_request: string): array
+function authenticate(string $idp_request): array
 {
-    global issuer, app_url;
+    global $issuer, $app_url;
     $idp = parse_url($idp_request);
     if (strcmp($idp['scheme'], 'http' . (isset($_SERVER['HTTPS']) ? 's' : '')) !== 0) {
-        throw 'Invalid IDP: The scheme is invalid.';
+        throw new Exception('Invalid IDP: The scheme is invalid.');
     }
     if (strcmp($idp['host'], $_SERVER['HTTP_HOST']) !== 0) {
-        throw 'Invalid IDP: The host is invalid.';
+        throw new Exception('Invalid IDP: The host is invalid.');
     }
     if (strcmp($idp['path'], preg_replace('/index.*$/', '', $_SERVER['REQUEST_URI'])) !== 0) {
-        throw 'Invalid IDP: The path is invalid.';
+        throw new Exception('Invalid IDP: The path is invalid.');
     }
     parse_str($idp['query'], $idp_input);
     
@@ -196,7 +198,7 @@ function authenticate($idp_request: string): array
     if (!$error_code) {
         $error = curl_error($curl);
         #$info = curl_getinfo($curl);
-        throw "Request to `$final_redir` had error `$error_code $error`";
+        throw new Exception("Request to `$final_redir` had error `$error_code $error`");
     }
     $complete_redirect = curl_getinfo($ch, CURLINFO_REDIRECT_URL);
     $cookies = curl_getinfo($curl, CURLINFO_COOKIELIST); #parseCookies($body);
@@ -213,8 +215,24 @@ function authenticate($idp_request: string): array
 
 function setup()
 {
-    global issuer, app_url;
-    $config = load_user_config($app_url, null);
+    global $issuer, $app_url;
+    $pdo = connectToDatabase();
+
+    // checking single user
+    $statement = $pdo->prepare('SELECT * FROM logins WHERE app_url = ? AND user_url = ?');
+    $statement->execute([$app_url, $app_url]);
+    $config = $statement->fetch(PDO::FETCH_ASSOC);
+    if ($config === false) {
+        $config = null;
+    }
+
+    if ((!$config['app_url'] || $config['app_url'] == '')
+        || (!$config['app_key'] || $config['app_key'] == '')
+        || (!$config['user_hash'] || $config['user_hash'] == '')
+        || (!$config['user_url'] || $config['user_url'] == '')
+    ) {
+        $config = null;
+    }
     if ($config !== null) {
         # this is already configured!
         return;
