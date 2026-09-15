@@ -1,6 +1,5 @@
 Source: mindie-agent
 Maintainer: carrvo <carrvo@gmail.com>
-Uploaders: carrvo <carrvo@gmail.com>
 Section: httpd
 Priority: optional
 Standards-Version: 4.6.2
