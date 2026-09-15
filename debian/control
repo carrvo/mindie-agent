@@ -1,0 +1,19 @@
+Source: mindie-agent
+Maintainer: carrvo <carrvo@gmail.com>
+Uploaders: carrvo <carrvo@gmail.com>
+Section: httpd
+Priority: optional
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13),
+    dh-apache2
+Homepage: https://github.com/carrvo/mindie-agent
+Vcs-Browser: https://github.com/carrvo/mindie-agent
+Vcs-Git: https://github.com/carrvo/mindie-agent
+
+Package: mindie-agent
+Architecture: all
+Depends: ${misc:Depends}, php, sqlite3, mindie-idp
+Homepage: https://github.com/carrvo/mindie-agent
+Description: An extension of MIndie that acts as an IndieAuth agent,
+ able to log into IndieAuth by itself without user interaction.
+ This can be used to build IndieAuth service-to-service agents.

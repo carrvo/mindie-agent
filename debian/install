@@ -1,0 +1,9 @@
+agent.php /usr/src/mindie-agent/
+agent-instance.php /usr/src/mindie-agent/
+idp.php /usr/src/mindie-agent/
+metadata.php /usr/src/mindie-agent/
+profile.php /usr/src/mindie-agent/
+client-id.php /usr/src/mindie-agent/
+vendor /usr/src/mindie-agent/
+composer.json /usr/src/mindie-agent/
+composer.lock /usr/src/mindie-agent/

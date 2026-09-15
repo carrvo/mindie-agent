@@ -1,0 +1,11 @@
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/mindie-agent.debhelper.log
+debian/mindie-agent.postinst.debhelper
+debian/mindie-agent.postrm.debhelper
+debian/mindie-agent.prerm.debhelper
+debian/mindie-agent.substvars
+debian/mindie-agent/
+package/
+

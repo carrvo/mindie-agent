@@ -1,0 +1,34 @@
+#!/bin/sh
+set -e
+
+#DEBHELPER#
+
+# SelfAuth
+if [ ! -d /var/lib/mindie-agent/ ];
+then
+    mkdir /var/lib/mindie-agent
+fi
+chgrp www-data /var/lib/mindie-agent/
+chmod g+rwx /var/lib/mindie-agent/
+if [ ! -f /var/lib/mindie-agent/multiuser.sqlite3 ];
+then
+    sqlite3 /var/lib/mindie-agent/multiuser.sqlite3 < /usr/src/mindie-idp/selfauth/schema.sql
+fi
+chgrp www-data /var/lib/mindie-agent/multiuser.sqlite3
+chmod g+rw /var/lib/mindie-agent/multiuser.sqlite3
+
+# MinToken
+if [ ! -d /var/lib/mindie-agent/ ];
+then
+    mkdir /var/lib/mindie-agent
+fi
+chgrp www-data /var/lib/mindie-agent/
+chmod g+rwx /var/lib/mindie-agent/
+if [ ! -f /var/lib/mindie-agent/tokens.sqlite3 ];
+then
+    sqlite3 /var/lib/mindie-agent/tokens.sqlite3 < /usr/src/mindie-idp/mintoken/schema.sql
+fi
+chgrp www-data /var/lib/mindie-agent/tokens.sqlite3
+chmod g+rw /var/lib/mindie-agent/tokens.sqlite3
+
+exit 0
