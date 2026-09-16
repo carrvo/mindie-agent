@@ -5,8 +5,7 @@ require '/usr/src/mindie-idp/selfauth/index.php';
 define('MINTOKEN_CURL_TIMEOUT', (int)getenv('MINTOKEN_CURL_TIMEOUT'));
 
 $issuer = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . $_SERVER['HTTP_HOST'];
-$app_url = $issuer . preg_replace('/index.*$/', '', $_SERVER['REQUEST_URI']);
-#$app_url = "$issuer/mindie-agent/index";
+$app_url = $issuer . getenv('MIndieAgentPath');
 
 function getAppUrl(): string
 {
@@ -25,7 +24,7 @@ function initAgentCurl(string $url): CurlHandle|false
     curl_setopt($curl, CURLOPT_CONNECTTIMEOUT_MS, 2000);
     curl_setopt($curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2);
 
-    $agent = getenv('MIndieAgent');
+    $agent = getenv('MIndieAgentAgent');
     if ($agent === false) {
         $agent = 'MIndie-Agent (https://github.com/carrvo/mindie-agent) curl/8.5.0';
     }

@@ -21,15 +21,15 @@ The parties that this agent constitutes are:
 
 1. *MIndie-Agent (agent-instance.php)* **requests** the *client service* **login** page.
 1. *MIndie-Agent (agent-instance.php)* **requests** the *client service* to perform a login with **MIndie-Agent's supplied URL**.
-1. The *client service* **requests** *MIndie-Agent's profile (profile.php)* to **discover** the IdP metadata endpoint.
-1. The *client service* **requests** *MIndie-Agent's (metadata.php)* metadata endpoint to **discover** the IdP URL.
+1. The *client service* **requests** *MIndie-Agent's profile (idp.php)* to **discover** the IdP metadata endpoint.
+1. The *client service* **requests** *MIndie-Agent's (idp.php)* metadata endpoint to **discover** the IdP URL.
 1. The *client service* **responds** to *MIndie-Agent (agent-instance.php)* with the IdP URL.
 1. *MIndie-Agent (agent.php)* **Authenticates and Authorizes itself**.
 1. *MIndie-Agent (agent.php)* generates an **authorization code**.
 1. *MIndie-Agent (agent.php)* **requests (including the authorization code)** the *client service* to complete the login.
 1. The *client service* **requests (including the authorization code)** *MIndie-Agent (idp.php)* to validate the login.
 1. *MIndie-Agent (idp.php)*, upon valid authorization code, **responds** to the *client service* with an **access token**.
-1. The *client service* **responds (including a cookie with the access token)** to *MIndie-Agent (agent.php)* with a login success.
+1. The *client service* **responds (including a cookie with the access token)** to *MIndie-Agent (idp.php)* with a login success.
 1. *MIndie-Agent (agent-instance.php)* **requests (including the cookie with the access token)** the *client service* **webpage or resource**.
 1. The *client service* **requests (including the access token)** *MIndie-Agent (idp.php)* for token information (called introspection).
 1. *MIndie-Agent (idp.php)*, upon valid access token, **responds** to the *client service* with an **identity token**.
