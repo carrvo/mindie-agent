@@ -225,7 +225,8 @@ function setup()
         $config = null;
     }
 
-    if ((!$config['app_url'] || $config['app_url'] == '')
+    if ($config === null
+        || (!$config['app_url'] || $config['app_url'] == '')
         || (!$config['app_key'] || $config['app_key'] == '')
         || (!$config['user_hash'] || $config['user_hash'] == '')
         || (!$config['user_url'] || $config['user_url'] == '')
@@ -254,6 +255,7 @@ function setup()
     $pass = md5($app_url . $app_key . $app_key);
     
     $pdo = connectToDatabase();
+    $lastException = null;
     for ($i = 0; $i < 10; $i++) {
         // We have to prepare inside the loop, https://github.com/teamtnt/tntsearch/pull/126
         $statement = $pdo->prepare('INSERT INTO logins (app_url, app_key, user_hash, user_url) VALUES (?, ?, ?, ?)');
