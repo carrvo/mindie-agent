@@ -9,7 +9,7 @@ $app_url = $issuer . getenv('MIndieAgentPath');
 $agent = getenv('MIndieAgentTitle') ?? 'MIndie-Agent';
 
 $method = get_method();
-$action = get_token_action();
+$action = filter_input(INPUT_GET, 'action', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^(revoke|introspect|authorize|metadata)$@']]);
 if ($method === 'GET') {
     if ($action === 'metadata') {
         header('Content-type: application/json');
@@ -28,7 +28,7 @@ if ($method === 'GET') {
         ];
         exit(json_encode($meta));
     }
-    if ($action === 'authorize') {
+    if ($action === 'authorize') { # except only the agent.php should be handling this...
         $request = filter_input_array(INPUT_GET, [
             'grant_type' => [
                 'filter' => FILTER_VALIDATE_REGEXP,

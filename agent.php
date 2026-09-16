@@ -18,7 +18,7 @@ function initAgentCurl(string $url): CurlHandle|false
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $url);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     curl_setopt($curl, CURLOPT_MAXREDIRS, 8);
     curl_setopt($curl, CURLOPT_TIMEOUT_MS, round(MINTOKEN_CURL_TIMEOUT * 1000));
     curl_setopt($curl, CURLOPT_CONNECTTIMEOUT_MS, 2000);
@@ -137,7 +137,7 @@ function authenticate(string $idp_request): array
     if (strcmp($idp['host'], $_SERVER['HTTP_HOST']) !== 0) {
         throw new Exception('Invalid IDP: The host is invalid.');
     }
-    if (strcmp($idp['path'], preg_replace('/index.*$/', '', $_SERVER['REQUEST_URI'])) !== 0) {
+    if (strcmp($idp['path'], getenv('MIndieAgentPath')) !== 0) {
         throw new Exception('Invalid IDP: The path is invalid.');
     }
     parse_str($idp['query'], $idp_input);
@@ -146,9 +146,9 @@ function authenticate(string $idp_request): array
     $config = load_user_config($app_url, $me)[0];
     $client_id = filter_var($idp_input['client_id'], FILTER_VALIDATE_URL);
     $redirect_uri = filter_var($idp_input['redirect_uri'], FILTER_VALIDATE_URL);
-    $state = filter_var_regexp($idp_input['state'], '@^[\x20-\x7E]*$@');
-    $response_type = filter_var_regexp($idp_input['response_type'], '@^(id|code)?$@');
-    $scope = filter_var_regexp($idp_input['scope'], '@^([\x21\x23-\x5B\x5D-\x7E]+( [\x21\x23-\x5B\x5D-\x7E]+)*)?$@');
+    $state = filter_var($idp_input['state'], FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[\x20-\x7E]*$@']]);
+    $response_type = filter_var($idp_input['response_type'], FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^(id|code)?$@']]);
+    $scope = filter_var($idp_input['scope'], FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^([\x21\x23-\x5B\x5D-\x7E]+( [\x21\x23-\x5B\x5D-\x7E]+)*)?$@']]);
     
     verify_client_supplied_data($me, $config, $client_id, $redirect_uri, $state, $response_type, $scope);
     if ($scope === '') { // scope is left empty.
@@ -188,18 +188,19 @@ function authenticate(string $idp_request): array
         ));
     }
     
+    // complete login
     $curl = initAgentCurl($final_redir);
     #curl_setopt($curl, CURLOPT_HEADER, true);
     curl_setopt($curl, CURLOPT_COOKIELIST, array(''));
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);
-    if (!$error_code) {
+    if ($error_code !== 0) {
         $error = curl_error($curl);
         #$info = curl_getinfo($curl);
         throw new Exception("Request to `$final_redir` had error `$error_code $error`");
     }
-    $complete_redirect = curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+    $complete_redirect = curl_getinfo($curl, CURLINFO_REDIRECT_URL);
     $cookies = curl_getinfo($curl, CURLINFO_COOKIELIST); #parseCookies($body);
     
     $result = array(
