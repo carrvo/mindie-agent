@@ -7,14 +7,79 @@ define('MINTOKEN_CURL_TIMEOUT', (int)getenv('MINTOKEN_CURL_TIMEOUT'));
 $issuer = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . $_SERVER['HTTP_HOST'];
 $app_url = $issuer . getenv('MIndieAgentPath');
 
+/**
+ * Credit to https://stackoverflow.com/a/30010928
+ *
+ * Creates a random unique temporary file, with specified parameters,
+ * that does not already exist (like tempnam(), but for dirs).
+ *
+ * Created file will begin with the specified prefix, followed by random
+ * numbers.
+ *
+ * @link https://php.net/manual/en/function.tempnam.php
+ * @link https://www.php.net/manual/en/function.touch.php
+ *
+ * @param string|null $dir Base directory under which to create temp dir.
+ *     If null, the default system temp dir (sys_get_temp_dir()) will be
+ *     used.
+ * @param string $prefix String with which to prefix created dirs.
+ * @param int $mode Octal file permission mask for the newly-created dir.
+ *     Should begin with a 0.
+ * @param int $maxAttempts Maximum attempts before giving up (to prevent
+ *     endless loops).
+ * @return string|bool Full path to newly-created dir, or false on failure.
+ */
+function tempfile($dir = null, $prefix = 'tmp_', $maxAttempts = 1000): bool|string
+{
+    /* Use the system temp dir by default. */
+    if (is_null($dir)) {
+        $dir = sys_get_temp_dir();
+    }
+
+    /* Trim trailing slashes from $dir. */
+    $dir = rtrim($dir, DIRECTORY_SEPARATOR);
+
+    /* If we don't have permission to create a directory, fail, otherwise we will
+     * be stuck in an endless loop.
+     */
+    if (!is_dir($dir) || !is_writable($dir)) {
+        return false;
+    }
+
+    /* Make sure characters in prefix are safe. */
+    if (strpbrk($prefix, '\\/:*?"<>|') !== false) {
+        return false;
+    }
+
+    /* Attempt to create a random directory until it works. Abort if we reach
+     * $maxAttempts. Something screwy could be happening with the filesystem
+     * and our loop could otherwise become endless.
+     */
+    $attempts = 0;
+    do {
+        $path = sprintf('%s%s%s%s', $dir, DIRECTORY_SEPARATOR, $prefix, mt_rand(100000, mt_getrandmax()));
+    } while (
+        !touch($path) &&
+        $attempts++ < $maxAttempts
+    );
+
+    return $path;
+}
+
 function getAppUrl(): string
 {
     global $issuer, $app_url;
     return $app_url;
 }
 
+$cookie_jar = tempfile(null, 'mindie-agent_', 100);
+if ($cookie_jar === false) {
+    throw new Exception("Unable to make cookie file");
+}
+
 function initAgentCurl(string $url): CurlHandle|false
 {
+    global $cookie_jar;
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $url);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
@@ -23,6 +88,8 @@ function initAgentCurl(string $url): CurlHandle|false
     curl_setopt($curl, CURLOPT_TIMEOUT_MS, round(MINTOKEN_CURL_TIMEOUT * 1000));
     curl_setopt($curl, CURLOPT_CONNECTTIMEOUT_MS, 2000);
     curl_setopt($curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2);
+    curl_setopt($curl, CURLOPT_COOKIEFILE, $cookie_jar); // send cookies
+    curl_setopt($curl, CURLOPT_COOKIEJAR, $cookie_jar); // store received cookies
 
     $agent = getenv('MIndieAgentAgent');
     if ($agent === false) {
@@ -51,6 +118,23 @@ function parseCookies($body)
         $cookies = array_merge($cookies, $cookie);
     }
     return $cookies;
+}
+
+/*
+ * Parses a raw cookie list from
+ * must call with `curl_setopt($curl, CURLOPT_COOKIELIST, array(''));`
+ *   Credit: https://stackoverflow.com/questions/9714360/reading-cookie-when-using-curl-in-php-how-to#comment71856937_41309070
+ * `curl_getinfo($curl, CURLINFO_COOKIELIST);`
+ */
+function bakeCookies($raw)
+{
+    $baked = array();
+    foreach($raw as $cookie) {
+        if (preg_match('@(?<domain>[\.\w]+)\t(?<subdomains>TRUE|FALSE)\t(?<path>[/\.\w]+)\t(?<https>TRUE|FALSE)\t(?<expires>\d+)\t(?<name>[\.\w]+)\t(?<value>.*)@i', $cookie, $oven) === 1) {
+            $baked = array_merge($baked, array($oven['name'] => $oven));
+        }
+    }
+    return $baked;
 }
 
 /*
@@ -201,7 +285,8 @@ function authenticate(string $idp_request): array
         throw new Exception("Request to `$final_redir` had error `$error_code $error`");
     }
     $complete_redirect = curl_getinfo($curl, CURLINFO_REDIRECT_URL);
-    $cookies = curl_getinfo($curl, CURLINFO_COOKIELIST); #parseCookies($body);
+    $cookies_raw = curl_getinfo($curl, CURLINFO_COOKIELIST); #parseCookies($body);
+    $cookies = bakeCookies($cookies_raw);
     
     $result = array(
         'service' => $client_meta,

@@ -17,7 +17,7 @@ function mf2(string $resource_uri, string $access_token)
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);
-    if (!$error_code) {
+    if ($error_code !== 0) {
         $error = curl_error($curl);
         throw new Exception("Request to `$resource_uri` had error `$error_code $error`");
     }
@@ -35,7 +35,7 @@ if ($method === 'POST') {
     $login_field = filter_input(INPUT_POST, 'field', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-z_-]+$@i']]);
     $idp_request = login($resource_uri, $login_page, $login_field);
     $auth = authenticate($idp_request);
-    $resource = mf2($resource_uri, $auth['access_token']);
+    $resource = mf2($resource_uri, $auth['oauth_token']['value']);
 }
 
 ?><!doctype html>
