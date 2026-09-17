@@ -34,8 +34,13 @@ if ($method === 'POST') {
         $resource_uri = filter_input(INPUT_POST, 'url', FILTER_VALIDATE_URL);
         $login_page = filter_input(INPUT_POST, 'login', FILTER_VALIDATE_URL);
         $login_field = filter_input(INPUT_POST, 'field', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-z_-]+$@i']]);
+        # Required - call the login with your target's information or create your own login function.
         $idp_request = login($resource_uri, $login_page, $login_field);
+        # Required - authenticate the login redirect. This will need to point to your idp component.
         $auth = authenticate($idp_request);
+        # Optional - request the desired resource.
+        # This example utilizes microformats (https://github.com/microformats/php-mf2)
+        # and expacts that it authenticated against MIndie-Client (https://github.com/carrvo/mindie-client).
         $resource = mf2($resource_uri, $auth['oauth_token']['value']);
     }
     catch (Exception $ex) {
