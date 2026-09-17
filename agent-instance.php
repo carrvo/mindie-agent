@@ -16,10 +16,14 @@ function mf2(string $resource_uri, string $access_token)
     curl_setopt($curl, CURLOPT_COOKIE, "oauth_token=$access_token");
     $body = curl_exec($curl);
     curl_close($curl);
-    $error_code = curl_errno($curl);
-    if ($error_code !== 0) {
+    $transport_code = curl_errno($curl);
+    if ($transport_code !== 0) {
         $error = curl_error($curl);
-        throw new Exception("Request to `$resource_uri` had error `$error_code $error`");
+        throw new Exception("Request to `$resource_uri` had transport error `$transport_code $error`");
+    }
+    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    if (!in_array($http_code, [200, 201, 202, 203, 204, 205, 206, 207, 208, 226])) {
+        throw new Exception("Request to `$resource_uri` had HTTP `$http_code`: $body");
     }
     $parsed = Mf2\parse($body, $resource_uri);
     return $parsed;
