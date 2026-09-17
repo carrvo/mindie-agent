@@ -30,12 +30,17 @@ setup();
 $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[!#$%&\'*+.^_`|~0-9a-z-]+$@i']]);
 $resource = null;
 if ($method === 'POST') {
-    $resource_uri = filter_input(INPUT_POST, 'url', FILTER_VALIDATE_URL);
-    $login_page = filter_input(INPUT_POST, 'login', FILTER_VALIDATE_URL);
-    $login_field = filter_input(INPUT_POST, 'field', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-z_-]+$@i']]);
-    $idp_request = login($resource_uri, $login_page, $login_field);
-    $auth = authenticate($idp_request);
-    $resource = mf2($resource_uri, $auth['oauth_token']['value']);
+    try {
+        $resource_uri = filter_input(INPUT_POST, 'url', FILTER_VALIDATE_URL);
+        $login_page = filter_input(INPUT_POST, 'login', FILTER_VALIDATE_URL);
+        $login_field = filter_input(INPUT_POST, 'field', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-z_-]+$@i']]);
+        $idp_request = login($resource_uri, $login_page, $login_field);
+        $auth = authenticate($idp_request);
+        $resource = mf2($resource_uri, $auth['oauth_token']['value']);
+    }
+    catch (Exception $ex) {
+        $resource = $ex->getMessage();
+    }
 }
 
 ?><!doctype html>
