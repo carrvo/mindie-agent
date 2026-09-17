@@ -28,37 +28,11 @@ if ($method === 'GET') {
         ];
         exit(json_encode($meta));
     }
-    if ($action === 'authorize') { # except only the agent.php should be handling this...
-        $request = filter_input_array(INPUT_GET, [
-            'grant_type' => [
-                'filter' => FILTER_VALIDATE_REGEXP,
-                'options' => ['regexp' => '@^authorization_code$@'],
-            ],
-            'code' => [
-                'filter' => FILTER_VALIDATE_REGEXP,
-                'options' => ['regexp' => '@^[\x20-\x7E]+$@'],
-            ],
-            'client_id' => FILTER_VALIDATE_URL,
-            'redirect_uri' => FILTER_VALIDATE_URL,
-        ]);
-        if (in_array(null, $request, true) || in_array(false, $request, true)) {
-            invalidRequest('missing field for request: '.print_r($request, true));
-        }
-
-        // query SelfAuth library directly
-        $configs = load_user_config($app_url);
-
-        // Scan through the existing users then
-        // Exit if there are errors in the client supplied data.
-        $user_verified = user_verify($request['code'], $request['redirect_uri'], $request['client_id'], $configs);
-        if ($user_verified === false) {
-            invalidRequest('Verification Failed: Given Code Was Invalid');
-        }
-
-        $info = get_response($request['code'], $user_verified);
-        // end SelfAuth library
-
-        exit(json_encode($info));
+    if ($action === 'authorize') {
+        # only the agent component should be handling this part of the authentication flow
+	    header('HTTP/1.0 403 Forbidden');
+	    echo '403 Forbidden';
+	    exit;
     }
     // else is a PROFILE request
     // see the end of the $method if-else statements for continuation of execution
