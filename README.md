@@ -13,6 +13,7 @@ This can be used to build IndieAuth service-to-service agents.
 1. Run `dpkg -i package/mindie-agent_X.X.X_all.deb` to install package locally
 1. Modify the configuration for your Apache HTTPd configuration (installed to `/etc/apache2/conf-available/mindie-agent-instance.php.conf`)
     ```
+    # This must be inside your <VirtualHost> if you are using it!
     AliasMatch ^/mindie-agent/idp$ /usr/src/mindie-agent/idp.php
     <LocationMatch ^/mindie-agent/idp$>
 	    # Required - this is the path to your idp endpoint that identifies your agent.
@@ -42,6 +43,33 @@ This can be used to build IndieAuth service-to-service agents.
 
 This will setup the following endpoints on your Apache server:
 - `https://example.com/mindie-agent/idp`
+
+The provided example (`mindie-agent-instance.conf`) also setups up the following endpoint on your server:
+- `https://example.com/mindie-agent/agent`
+
+### Virtual Hosts
+
+If you are using `<VirtualHost>` then this module's configuration needs to be provided inside.
+```
+IncludeOptional conf-available/mindie-agent.conf
+```
+
+This includes the minimum custom `MIndieAgentPath` endpoint.
+```
+AliasMatch ^/mindie-agent/idp$ /usr/src/mindie-agent/idp.php
+<LocationMatch ^/mindie-agent/idp$>
+    # Required - this is the path to your idp endpoint that identifies your agent.
+    # Your agent will be required to have this as well.
+    SetEnv MIndieAgentPath "/mindie-agent/idp"
+    # Optional - give a title for your agent's public profile. Not used for the agent component.
+    SetEnv MIndieAgentTitle MIndie-Agent
+</LocationMatch>
+```
+
+To use the provided example agent endpoint (instead of the custom `MIndieAgentPath` endpoint), it also needs to be in the `VirtualHost` since it also has Apache HTTPd configuration.
+```
+IncludeOptional conf-available/mindie-agent-instance.conf
+```
 
 ## IndieAuth
 
