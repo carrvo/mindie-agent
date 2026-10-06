@@ -191,7 +191,6 @@ function login(string $resource_uri, string $login_page, string $login_field = '
     $curl = initAgentCurl($action);
     if (strcasecmp($method, 'GET') === 0) {
         $curl = initAgentCurl($action . '?' . http_build_query($data));
-        curl_setopt($curl, CURLOPT_GET, true);
     }
     else if (strcasecmp($method, 'POST') === 0) {
         curl_setopt($curl, CURLOPT_POST, true);
