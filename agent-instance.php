@@ -44,7 +44,7 @@ if ($method === 'POST') {
         $auth = authenticate($idp_request);
         # Optional - request the desired resource.
         # This example utilizes microformats (https://github.com/microformats/php-mf2)
-        # and expacts that it authenticated against MIndie-Client (https://github.com/carrvo/mindie-client).
+        # and expects that it authenticated against MIndie-Client (https://github.com/carrvo/mindie-client).
         $resource = mf2($resource_uri, $auth['oauth_token']['value']);
     }
     catch (Exception $ex) {
