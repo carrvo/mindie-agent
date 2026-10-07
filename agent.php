@@ -215,17 +215,21 @@ function authenticate(string $idp_request): array
     global $issuer, $app_url;
     $idp = parse_url($idp_request);
     if (strcmp($idp['scheme'], 'http' . (isset($_SERVER['HTTPS']) ? 's' : '')) !== 0) {
-        throw new Exception('Invalid IDP: The scheme is invalid.');
+        throw new Exception('Invalid IDP: The scheme `'.$idp['scheme'].'` is invalid, expected `'.'http' . (isset($_SERVER['HTTPS']) ? 's' : '').'`.');
     }
     if (strcmp($idp['host'], $_SERVER['HTTP_HOST']) !== 0) {
-        throw new Exception('Invalid IDP: The host is invalid.');
+        throw new Exception('Invalid IDP: The host `'.$idp['host'].'` is invalid, expected `'.$_SERVER['HTTP_HOST'].'`.');
     }
     if (strcmp($idp['path'], getenv('MIndieAgentPath')) !== 0) {
-        throw new Exception('Invalid IDP: The path is invalid.');
+        throw new Exception('Invalid IDP: The path `'.$idp['path'].'` is invalid, expected `'.getenv('MIndieAgentPath').'`.');
     }
     parse_str($idp['query'], $idp_input);
     
     $me = filter_var($idp_input['me'], FILTER_VALIDATE_URL);
+    if ($me === NULL || $me === '') {
+        #throw new Exception('Invalid IDP: login did not return a me.');
+        $me = getAppUrl();
+    }
     $config = load_user_config($app_url, $me)[0];
     $client_id = filter_var($idp_input['client_id'], FILTER_VALIDATE_URL);
     $redirect_uri = filter_var($idp_input['redirect_uri'], FILTER_VALIDATE_URL);
