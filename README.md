@@ -93,13 +93,17 @@ The parties that this agent constitutes are:
 1. *MIndie-Agent (agent.php)* **requests (including the authorization code)** the *client service* to complete the login.
 1. The *client service* **requests (including the authorization code)** *MIndie-Agent (idp.php)* to validate the login.
 1. *MIndie-Agent (idp.php)*, upon valid authorization code, **responds** to the *client service* with an **access token**.
-1. The *client service* **responds (including a cookie with the access token)** to *MIndie-Agent (idp.php)* with a login success.
+1. The *client service* **responds (including a cookie with the access token)** to *MIndie-Agent (agent.php)* with a login success.
 1. *MIndie-Agent (agent-instance.php)* **requests (including the cookie with the access token)** the *client service* **webpage or resource**.
 1. The *client service* **requests (including the access token)** *MIndie-Agent (idp.php)* for token information (called introspection).
 1. *MIndie-Agent (idp.php)*, upon valid access token, **responds** to the *client service* with an **identity token**.
 1. The *client service*, upon valid Authorization, **responds** to *MIndie-Agent (agent-instance.php)* with the appropriate **webpage or resource**.
 
 Note that for a non-browser agent (including a client-side script), it would return the **access token** directly, instead of inside a cookie; and then the agent would have to include the `Authorize: Bearer <access token>` header instead of sending the **access token** inside a cookie.
+
+### IndieAuth Simple Flow (with Metadata Discovery)
+
+The [specification](https://indieauth.spec.indieweb.org/#authorization) supports a "simple" flow. In this case, the client service uses the `me` provided alongside the `access_token` during login success and no introspection is performed.
 
 ## License
 
