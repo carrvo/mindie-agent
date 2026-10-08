@@ -8,15 +8,33 @@ $issuer = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . $_SERVER['HTT
 $app_url = $issuer . getenv('MIndieAgentPath');
 $agent = getenv('MIndieAgentTitle') ?? 'MIndie-Agent';
 
+function mockSelfAuth($app_url, $request)
+{
+    // query SelfAuth library directly
+    $configs = load_user_config($app_url);
+
+    // Scan through the existing users then
+    // Exit if there are errors in the client supplied data.
+    $user_verified = user_verify($request['code'], $request['redirect_uri'], $request['client_id'], $configs);
+    if ($user_verified === false) {
+        invalidRequest('Verification Failed: Given Code Was Invalid');
+    }
+
+    $info = get_response($request['code'], $user_verified);
+    // end SelfAuth library
+
+    return $info;
+}
+
 $method = get_method();
-$action = filter_input(INPUT_GET, 'action', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^(revoke|introspect|authorize|metadata)$@']]);
+$action = filter_input(INPUT_GET, 'action', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^(revoke|introspect|authorize|token|metadata)$@']]);
 if ($method === 'GET') {
     if ($action === 'metadata') {
         header('Content-type: application/json');
         $meta = [
 	        "issuer" => $issuer,
 	        "authorization_endpoint" => "$app_url?action=authorize",
-	        "token_endpoint" => "$app_url?action=authorize",
+	        "token_endpoint" => "$app_url?action=token",
 	        "introspection_endpoint" => "$app_url?action=introspect",
 	        "response_types_supported" => ["code"],
 	        "response_modes_supported" => ["query"],
@@ -55,33 +73,30 @@ if ($method === 'GET') {
         $tokenInfo = retrieveToken($token);
         token_introspection($token, $tokenInfo);
     }
-    // else is a POST+authorization request
-    $request = get_request();
+    // check if is POST+token request
+    if ($action == 'token') {
+        $request = get_request();
 
+        $info = mockSelfAuth($app_url, $request);
 
-    // query SelfAuth library directly
-    $configs = load_user_config($app_url);
-
-    // Scan through the existing users then
-    // Exit if there are errors in the client supplied data.
-    $user_verified = user_verify($request['code'], $request['redirect_uri'], $request['client_id'], $configs);
-    if ($user_verified === false) {
-        invalidRequest('Verification Failed: Given Code Was Invalid');
+        $token = storeToken($info['me'], $request['client_id'], $info['scope']);
+        header('HTTP/1.1 200 OK');
+        header('Content-Type: application/json;charset=UTF-8');
+        exit(json_encode([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'scope' => $info['scope'],
+            'me' => $info['me'],
+        ]));
     }
+    // else is a POST+authorization request
+    // that is, authorization without a token (just SelfAuth, no MinToken)
+    $request = get_request();
+    $info = mockSelfAuth($app_url, $request);
 
-    $info = get_response($request['code'], $user_verified);
-    // end SelfAuth library
-
-
-    $token = storeToken($info['me'], $request['client_id'], $info['scope']);
     header('HTTP/1.1 200 OK');
     header('Content-Type: application/json;charset=UTF-8');
-    exit(json_encode([
-        'access_token' => $token,
-        'token_type' => 'Bearer',
-        'scope' => $info['scope'],
-        'me' => $info['me'],
-    ]));
+    exit(json_encode($info));
 } else {
     header('HTTP/1.1 405 Method Not Allowed');
     header('Allow: GET, POST');
