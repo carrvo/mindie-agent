@@ -209,6 +209,10 @@ function login(string $login_page, string $login_field = 'url'): string {
     }
     $redirect = curl_getinfo($curl, CURLINFO_REDIRECT_URL);
 
+    return $redirect;
+}
+
+function followRedirectsToApp(string $redirect): string {
     // Follow redirects until reach the IDP (this app)
     $idp = parse_url($redirect);
     while (isset($idp) && strcmp($idp['host'], $_SERVER['HTTP_HOST']) !== 0 && strcmp($idp['path'], getenv('MIndieAgentPath')) !== 0) {

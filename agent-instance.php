@@ -43,7 +43,10 @@ if ($method === 'POST') {
         $login_field = filter_input(INPUT_POST, 'field', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-z_-]+$@i']]);
         # Required - call the login with your target's information or create your own login function.
         $idp_request = login($login_page, $login_field);
-        # Required - authenticate the login redirect. This will need to point to your idp component.
+        # Recommended - some logins will have intermediate redirects,
+        # use this to follow them until they point to the app
+        $idp_request = followRedirectsToApp($idp_request)
+        # Required - authenticate the login redirect. This will need to point to your IDP component.
         $auth = authenticate($idp_request);
         # Optional - request the desired resource.
         # This example utilizes microformats (https://github.com/microformats/php-mf2)
