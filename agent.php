@@ -153,7 +153,7 @@ function build_url(array $parts) {
         (isset($parts['fragment']) ? "#{$parts['fragment']}" : '');
 }
 
-function login(string $resource_uri, string $login_page, string $login_field = 'url'): string {
+function login(string $login_page, string $login_field = 'url'): string {
     $curl = initAgentCurl($login_page);
     $body = curl_exec($curl);
     curl_close($curl);
@@ -162,7 +162,7 @@ function login(string $resource_uri, string $login_page, string $login_field = '
         $error = curl_error($curl);
         throw new Exception("Request to `$login_page` had error `$error_code $error`");
     }
-    
+
     // see https://www.php.net/manual/en/class.domdocument.php
     // see https://www.php.net/manual/en/class.dom-htmldocument.php
     $dom = new DOMDocument();
@@ -179,7 +179,7 @@ function login(string $resource_uri, string $login_page, string $login_field = '
             $data[$name] = $value;
         }
     }
-    
+
     if (parse_url($action, PHP_URL_SCHEME) === null) {
         # need to fix because relative
         $login = parse_url($login_page);
@@ -187,7 +187,7 @@ function login(string $resource_uri, string $login_page, string $login_field = '
         $action = build_url($login);
     }
     $data[$login_field] = getAppUrl();
-    
+
     $curl = initAgentCurl($action);
     if (strcasecmp($method, 'GET') === 0) {
         $curl = initAgentCurl($action . '?' . http_build_query($data));
@@ -207,6 +207,22 @@ function login(string $resource_uri, string $login_page, string $login_field = '
         throw new Exception("Request to `$action` had error `$error_code $error`");
     }
     $redirect = curl_getinfo($curl, CURLINFO_REDIRECT_URL);
+
+    // Follow redirects until reach the IDP (this app)
+    $idp = parse_url($redirect);
+    while (isset($idp) && strcmp($idp['host'], $_SERVER['HTTP_HOST']) !== 0 && strcmp($idp['path'], getenv('MIndieAgentPath')) !== 0) {
+        $curl = initAgentCurl($redirect);
+        $body = curl_exec($curl);
+        curl_close($curl);
+        $error_code = curl_errno($curl);
+        if ($error_code !== 0) {
+            $error = curl_error($curl);
+            throw new Exception("Request to `$redirect` had error `$error_code $error`");
+        }
+        $redirect = curl_getinfo($curl, CURLINFO_REDIRECT_URL);
+        $idp = parse_url($redirect);
+    }
+
     return $redirect;
 }
 
@@ -278,7 +294,7 @@ function authenticate(string $idp_request): array
     // complete login
     $curl = initAgentCurl($final_redir);
     #curl_setopt($curl, CURLOPT_HEADER, true);
-    curl_setopt($curl, CURLOPT_COOKIELIST, array(''));
+    curl_setopt($curl, CURLOPT_COOKIELIST, '');
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);

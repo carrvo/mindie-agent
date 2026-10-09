@@ -27,14 +27,14 @@ function mockSelfAuth($app_url, $request)
 }
 
 $method = get_method();
-$action = filter_input(INPUT_GET, 'action', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^(revoke|introspect|authorize|token|metadata)$@']]);
+$action = filter_input(INPUT_GET, 'action', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^(revoke|introspect|authorize|metadata)$@']]);
 if ($method === 'GET') {
     if ($action === 'metadata') {
         header('Content-type: application/json');
         $meta = [
 	        "issuer" => $issuer,
-	        "authorization_endpoint" => "$app_url?action=authorize",
-	        "token_endpoint" => "$app_url?action=token",
+	        "authorization_endpoint" => "$app_url",
+	        "token_endpoint" => "$app_url?action=authorize",
 	        "introspection_endpoint" => "$app_url?action=introspect",
 	        "response_types_supported" => ["code"],
 	        "response_modes_supported" => ["query"],
@@ -57,9 +57,6 @@ if ($method === 'GET') {
 } elseif ($method === 'POST') {
     $type = get_media_type();
     $token = get_token();
-    if (!is_string($action)) {
-        invalidRequest('no action provided');
-    }
     // check if is POST+revoke request
     if ($action === 'revoke') {
         if (is_string($token)) {
@@ -73,8 +70,8 @@ if ($method === 'GET') {
         $tokenInfo = retrieveToken($token);
         token_introspection($token, $tokenInfo);
     }
-    // check if is POST+token request
-    if ($action == 'token') {
+    // check if is POST+authorization request
+    if ($action == 'authorization') {
         $request = get_request();
 
         $info = mockSelfAuth($app_url, $request);
@@ -89,7 +86,7 @@ if ($method === 'GET') {
             'me' => $info['me'],
         ]));
     }
-    // else is a POST+authorization request
+    // else is a POST+no_action request
     // that is, authorization without a token (just SelfAuth, no MinToken)
     $request = get_request();
     $info = mockSelfAuth($app_url, $request);

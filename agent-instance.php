@@ -6,14 +6,16 @@ require __DIR__ . '/vendor/autoload.php';
 /*
  * See https://github.com/microformats/php-mf2
  */
-function mf2(string $resource_uri, string $access_token)
+function mf2(string $resource_uri, ?string $access_token)
 {
     #$authorization_header = "Authorization: Bearer $access_token";
     $curl = initAgentCurl($resource_uri);
-    curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER);
-    curl_setopt($curl, CURLOPT_XOAUTH2_BEARER, $access_token);
-    #curl_setopt($curl, CURLOPT_HTTPHEADER, array($authorization));
-    curl_setopt($curl, CURLOPT_COOKIE, "oauth_token=$access_token");
+    if ($access_token !== NULL && $access_token !== '') {
+        curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER);
+        curl_setopt($curl, CURLOPT_XOAUTH2_BEARER, $access_token);
+        #curl_setopt($curl, CURLOPT_HTTPHEADER, array($authorization));
+        curl_setopt($curl, CURLOPT_COOKIE, "oauth_token=$access_token");
+    }
     $body = curl_exec($curl);
     curl_close($curl);
     $transport_code = curl_errno($curl);
@@ -39,13 +41,13 @@ if ($method === 'POST') {
         $login_page = filter_input(INPUT_POST, 'login', FILTER_VALIDATE_URL);
         $login_field = filter_input(INPUT_POST, 'field', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-z_-]+$@i']]);
         # Required - call the login with your target's information or create your own login function.
-        $idp_request = login($resource_uri, $login_page, $login_field);
+        $idp_request = login($login_page, $login_field);
         # Required - authenticate the login redirect. This will need to point to your idp component.
         $auth = authenticate($idp_request);
         # Optional - request the desired resource.
         # This example utilizes microformats (https://github.com/microformats/php-mf2)
         # and expects that it authenticated against MIndie-Client (https://github.com/carrvo/mindie-client).
-        $resource = mf2($resource_uri, $auth['oauth_token']['value']);
+        $resource = mf2($auth['redirect'], $auth['oauth_token']['value']);
     }
     catch (Exception $ex) {
         $resource = $ex->getMessage();
@@ -101,10 +103,18 @@ padding:20px;
                 </div>
             </div>
         </form>
+        <?php if ($auth) : ?>
+        <blockquote>
+            <?php echo htmlspecialchars($auth['redirect']) ?>
+        </blockquote>
+        <?php endif ?>
         <?php if ($resource) : ?>
         <blockquote>
             <?php echo var_dump($resource) ?>
         </blockquote>
+        <?php endif ?>
+        <?php if ($auth) : ?>
+        <iframe src="<?php echo htmlspecialchars($auth['redirect']) ?>"></iframe>
         <?php endif ?>
     </body>
 </html>
