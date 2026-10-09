@@ -1,3 +1,15 @@
+mindie-agent (0.1.0) unstable; urgency=medium
+
+  * fix #2 Force to GET
+  * fix #1 with VirtualHost documentation
+  * fix README + add simple flow section
+  * fix code comment
+  * fix #3 difference between the authorization endpoint and token endpoint
+  * changes based upon live testing against IndieLogin.com
+  * enable redirects by default for the caller, but always disable within library
+
+ -- carrvo <carrvo@gmail.com>  Thu, 08 Oct 2026 18:28:15 -0600
+
 mindie-agent (0.0.0) unstable; urgency=medium
 
   * Initial release.
