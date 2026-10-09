@@ -83,7 +83,6 @@ function initAgentCurl(string $url): CurlHandle|false
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $url);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     curl_setopt($curl, CURLOPT_MAXREDIRS, 8);
     curl_setopt($curl, CURLOPT_TIMEOUT_MS, round(MINTOKEN_CURL_TIMEOUT * 1000));
     curl_setopt($curl, CURLOPT_CONNECTTIMEOUT_MS, 2000);
@@ -155,6 +154,7 @@ function build_url(array $parts) {
 
 function login(string $login_page, string $login_field = 'url'): string {
     $curl = initAgentCurl($login_page);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);
@@ -199,6 +199,7 @@ function login(string $login_page, string $login_field = 'url'): string {
     else {
         throw new Exception("invalid login method $method");
     }
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);
@@ -212,6 +213,7 @@ function login(string $login_page, string $login_field = 'url'): string {
     $idp = parse_url($redirect);
     while (isset($idp) && strcmp($idp['host'], $_SERVER['HTTP_HOST']) !== 0 && strcmp($idp['path'], getenv('MIndieAgentPath')) !== 0) {
         $curl = initAgentCurl($redirect);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
         $body = curl_exec($curl);
         curl_close($curl);
         $error_code = curl_errno($curl);
@@ -293,6 +295,7 @@ function authenticate(string $idp_request): array
     
     // complete login
     $curl = initAgentCurl($final_redir);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     #curl_setopt($curl, CURLOPT_HEADER, true);
     curl_setopt($curl, CURLOPT_COOKIELIST, '');
     $body = curl_exec($curl);

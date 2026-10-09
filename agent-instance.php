@@ -10,6 +10,7 @@ function mf2(string $resource_uri, ?string $access_token)
 {
     #$authorization_header = "Authorization: Bearer $access_token";
     $curl = initAgentCurl($resource_uri);
+    //curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false); // to disable redirects
     if ($access_token !== NULL && $access_token !== '') {
         curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER);
         curl_setopt($curl, CURLOPT_XOAUTH2_BEARER, $access_token);
