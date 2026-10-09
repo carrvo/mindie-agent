@@ -83,7 +83,6 @@ function initAgentCurl(string $url): CurlHandle|false
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $url);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     curl_setopt($curl, CURLOPT_MAXREDIRS, 8);
     curl_setopt($curl, CURLOPT_TIMEOUT_MS, round(MINTOKEN_CURL_TIMEOUT * 1000));
     curl_setopt($curl, CURLOPT_CONNECTTIMEOUT_MS, 2000);
@@ -153,8 +152,9 @@ function build_url(array $parts) {
         (isset($parts['fragment']) ? "#{$parts['fragment']}" : '');
 }
 
-function login(string $resource_uri, string $login_page, string $login_field = 'url'): string {
+function login(string $login_page, string $login_field = 'url'): string {
     $curl = initAgentCurl($login_page);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);
@@ -162,7 +162,7 @@ function login(string $resource_uri, string $login_page, string $login_field = '
         $error = curl_error($curl);
         throw new Exception("Request to `$login_page` had error `$error_code $error`");
     }
-    
+
     // see https://www.php.net/manual/en/class.domdocument.php
     // see https://www.php.net/manual/en/class.dom-htmldocument.php
     $dom = new DOMDocument();
@@ -179,7 +179,7 @@ function login(string $resource_uri, string $login_page, string $login_field = '
             $data[$name] = $value;
         }
     }
-    
+
     if (parse_url($action, PHP_URL_SCHEME) === null) {
         # need to fix because relative
         $login = parse_url($login_page);
@@ -187,11 +187,10 @@ function login(string $resource_uri, string $login_page, string $login_field = '
         $action = build_url($login);
     }
     $data[$login_field] = getAppUrl();
-    
+
     $curl = initAgentCurl($action);
     if (strcasecmp($method, 'GET') === 0) {
         $curl = initAgentCurl($action . '?' . http_build_query($data));
-        curl_setopt($curl, CURLOPT_GET, true);
     }
     else if (strcasecmp($method, 'POST') === 0) {
         curl_setopt($curl, CURLOPT_POST, true);
@@ -200,6 +199,7 @@ function login(string $resource_uri, string $login_page, string $login_field = '
     else {
         throw new Exception("invalid login method $method");
     }
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);
@@ -208,6 +208,27 @@ function login(string $resource_uri, string $login_page, string $login_field = '
         throw new Exception("Request to `$action` had error `$error_code $error`");
     }
     $redirect = curl_getinfo($curl, CURLINFO_REDIRECT_URL);
+
+    return $redirect;
+}
+
+function followRedirectsToApp(string $redirect): string {
+    // Follow redirects until reach the IDP (this app)
+    $idp = parse_url($redirect);
+    while (isset($idp) && strcmp($idp['host'], $_SERVER['HTTP_HOST']) !== 0 && strcmp($idp['path'], getenv('MIndieAgentPath')) !== 0) {
+        $curl = initAgentCurl($redirect);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
+        $body = curl_exec($curl);
+        curl_close($curl);
+        $error_code = curl_errno($curl);
+        if ($error_code !== 0) {
+            $error = curl_error($curl);
+            throw new Exception("Request to `$redirect` had error `$error_code $error`");
+        }
+        $redirect = curl_getinfo($curl, CURLINFO_REDIRECT_URL);
+        $idp = parse_url($redirect);
+    }
+
     return $redirect;
 }
 
@@ -216,17 +237,21 @@ function authenticate(string $idp_request): array
     global $issuer, $app_url;
     $idp = parse_url($idp_request);
     if (strcmp($idp['scheme'], 'http' . (isset($_SERVER['HTTPS']) ? 's' : '')) !== 0) {
-        throw new Exception('Invalid IDP: The scheme is invalid.');
+        throw new Exception('Invalid IDP: The scheme `'.$idp['scheme'].'` is invalid, expected `'.'http' . (isset($_SERVER['HTTPS']) ? 's' : '').'`.');
     }
     if (strcmp($idp['host'], $_SERVER['HTTP_HOST']) !== 0) {
-        throw new Exception('Invalid IDP: The host is invalid.');
+        throw new Exception('Invalid IDP: The host `'.$idp['host'].'` is invalid, expected `'.$_SERVER['HTTP_HOST'].'`.');
     }
     if (strcmp($idp['path'], getenv('MIndieAgentPath')) !== 0) {
-        throw new Exception('Invalid IDP: The path is invalid.');
+        throw new Exception('Invalid IDP: The path `'.$idp['path'].'` is invalid, expected `'.getenv('MIndieAgentPath').'`.');
     }
     parse_str($idp['query'], $idp_input);
     
     $me = filter_var($idp_input['me'], FILTER_VALIDATE_URL);
+    if ($me === NULL || $me === '') {
+        #throw new Exception('Invalid IDP: login did not return a me.');
+        $me = getAppUrl();
+    }
     $config = load_user_config($app_url, $me)[0];
     $client_id = filter_var($idp_input['client_id'], FILTER_VALIDATE_URL);
     $redirect_uri = filter_var($idp_input['redirect_uri'], FILTER_VALIDATE_URL);
@@ -274,8 +299,9 @@ function authenticate(string $idp_request): array
     
     // complete login
     $curl = initAgentCurl($final_redir);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     #curl_setopt($curl, CURLOPT_HEADER, true);
-    curl_setopt($curl, CURLOPT_COOKIELIST, array(''));
+    curl_setopt($curl, CURLOPT_COOKIELIST, '');
     $body = curl_exec($curl);
     curl_close($curl);
     $error_code = curl_errno($curl);

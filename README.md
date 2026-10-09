@@ -13,6 +13,7 @@ This can be used to build IndieAuth service-to-service agents.
 1. Run `dpkg -i package/mindie-agent_X.X.X_all.deb` to install package locally
 1. Modify the configuration for your Apache HTTPd configuration (installed to `/etc/apache2/conf-available/mindie-agent-instance.php.conf`)
     ```
+    # This must be inside your <VirtualHost> if you are using it!
     AliasMatch ^/mindie-agent/idp$ /usr/src/mindie-agent/idp.php
     <LocationMatch ^/mindie-agent/idp$>
 	    # Required - this is the path to your idp endpoint that identifies your agent.
@@ -43,6 +44,33 @@ This can be used to build IndieAuth service-to-service agents.
 This will setup the following endpoints on your Apache server:
 - `https://example.com/mindie-agent/idp`
 
+The provided example (`mindie-agent-instance.conf`) also setups up the following endpoint on your server:
+- `https://example.com/mindie-agent/agent`
+
+### Virtual Hosts
+
+If you are using `<VirtualHost>` then this module's configuration needs to be provided inside.
+```
+IncludeOptional conf-available/mindie-agent.conf
+```
+
+This includes the minimum custom `MIndieAgentPath` endpoint.
+```
+AliasMatch ^/mindie-agent/idp$ /usr/src/mindie-agent/idp.php
+<LocationMatch ^/mindie-agent/idp$>
+    # Required - this is the path to your idp endpoint that identifies your agent.
+    # Your agent will be required to have this as well.
+    SetEnv MIndieAgentPath "/mindie-agent/idp"
+    # Optional - give a title for your agent's public profile. Not used for the agent component.
+    SetEnv MIndieAgentTitle MIndie-Agent
+</LocationMatch>
+```
+
+To use the provided example agent endpoint (instead of the custom `MIndieAgentPath` endpoint), it also needs to be in the `VirtualHost` since it also has Apache HTTPd configuration.
+```
+IncludeOptional conf-available/mindie-agent-instance.conf
+```
+
 ## IndieAuth
 
 ### IndieAuth Pieces
@@ -65,13 +93,17 @@ The parties that this agent constitutes are:
 1. *MIndie-Agent (agent.php)* **requests (including the authorization code)** the *client service* to complete the login.
 1. The *client service* **requests (including the authorization code)** *MIndie-Agent (idp.php)* to validate the login.
 1. *MIndie-Agent (idp.php)*, upon valid authorization code, **responds** to the *client service* with an **access token**.
-1. The *client service* **responds (including a cookie with the access token)** to *MIndie-Agent (idp.php)* with a login success.
+1. The *client service* **responds (including a cookie with the access token)** to *MIndie-Agent (agent.php)* with a login success.
 1. *MIndie-Agent (agent-instance.php)* **requests (including the cookie with the access token)** the *client service* **webpage or resource**.
 1. The *client service* **requests (including the access token)** *MIndie-Agent (idp.php)* for token information (called introspection).
 1. *MIndie-Agent (idp.php)*, upon valid access token, **responds** to the *client service* with an **identity token**.
 1. The *client service*, upon valid Authorization, **responds** to *MIndie-Agent (agent-instance.php)* with the appropriate **webpage or resource**.
 
 Note that for a non-browser agent (including a client-side script), it would return the **access token** directly, instead of inside a cookie; and then the agent would have to include the `Authorize: Bearer <access token>` header instead of sending the **access token** inside a cookie.
+
+### IndieAuth Simple Flow (with Metadata Discovery)
+
+The [specification](https://indieauth.spec.indieweb.org/#authorization) supports a "simple" flow. In this case, the client service uses the `me` provided alongside the `access_token` during login success and no introspection is performed.
 
 ## License
 
